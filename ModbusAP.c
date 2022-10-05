@@ -28,7 +28,7 @@ void print_buffer(char *buffer, int size){
     printf("\n");
 }
 
-int Read_h_regs(int server_add, int port, int st_r, int n_r, char *val){
+int Read_h_regs(char *server_add, int port, int st_r, int n_r, char *val){
     // Check Parameters
     if((st_r > max_number_of_registers) || (st_r < 0)){
         printf("[-] Bad parameters (st_r)\n");
@@ -46,14 +46,18 @@ int Read_h_regs(int server_add, int port, int st_r, int n_r, char *val){
         //printf("[-] Bad parameters (val)\n");
         //return -1;
     }
+    if(port < 0){
+        printf("[-] Bad parameters (port)\n");
+        return -1;
+    }
 
     // Assembles APDU (MODBUS PDU)
     char ADPU[ADPU_max_size];
     uint8_t Func_code, HI_byte_st, LO_byte_st, HI_byte_quantity, LO_byte_quantity; // 5 bytes overhead
 
     Func_code = Read_holding_registers_function_code;
-    HI_byte_st = (st_r - 1) >> 8;
-    LO_byte_st = (st_r - 1) & 0xFF;
+    HI_byte_st = (st_r - 1) >> 8; // 0xF12E -> 0x00F1
+    LO_byte_st = (st_r - 1) & 0xFF; // 0xF12E & 0x00FF -> 0x00E2
     HI_byte_quantity = n_r >> 8;
     LO_byte_quantity = n_r & 0xFF;
 
@@ -64,9 +68,10 @@ int Read_h_regs(int server_add, int port, int st_r, int n_r, char *val){
     ADPU[4] = LO_byte_quantity;
 
     int ADPU_size = (5);
-    char *ADPU_R;
+    char ADPU_R[ADPU_max_size];
 
-ADPU_R[0] = 'a';
+    print_buffer(ADPU, ADPU_size);
+
     // Send_Modbus_request()
     int res = Send_Modbus_request(server_add, port, ADPU, ADPU_size, ADPU_R);
 
@@ -108,7 +113,7 @@ ADPU_R[0] = 'a';
     return read_registers;
 }
 
-int Write_multiple_request(int server_add, int port, int st_r, int n_r, char *val){
+int Write_multiple_request(char *server_add, int port, int st_r, int n_r, char *val){
     // Check Parameters
     // port
     if((st_r > max_number_of_registers) || (st_r < 0)){
@@ -127,7 +132,7 @@ int Write_multiple_request(int server_add, int port, int st_r, int n_r, char *va
         //printf("[-] Bad parameters (val)\n");
         //return -1;
     }
-
+    
     // Assembles ADPU (Modbus PDU)
     char ADPU[ADPU_max_size];
     uint8_t Func_code, HI_byte_st, LO_byte_st, HI_byte_quantity, LO_byte_quantity, Byte_count, HI_reg, LO_Reg;
@@ -156,7 +161,7 @@ int Write_multiple_request(int server_add, int port, int st_r, int n_r, char *va
     }
         
     int ADPU_size = (6 + 2*n_r);
-    char *ADPU_R;
+    char ADPU_R[ADPU_max_size];
 
     
     print_buffer(val, (2*n_r));
@@ -200,5 +205,5 @@ int Write_multiple_request(int server_add, int port, int st_r, int n_r, char *va
     }
 
     // Return: number of written register - ok ; <0 - Error
-    return 1;
+    return write_registers;
 }
