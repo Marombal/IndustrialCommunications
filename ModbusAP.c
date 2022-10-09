@@ -6,12 +6,11 @@
 
 #include <stdlib.h>
 
-#include "ModbusAP.h"
 #include "ModbusTCP.h"
 
 #define max_number_of_registers 65536
 #define max_quantity_of_registers 123
-#define ADPU_max_size 252 // 123*2 + 6
+#define ADPU_max_size 256 // 123*2 + 6 + extra
 #define Write_multiple_request_function_code 0x10
 #define Read_holding_registers_function_code 0x03
 
@@ -22,13 +21,20 @@
 #define STATE_OK 2
 
 
-void print_buffer(char *buffer, int size){
-    printf("Buffer: ");
+void print_ADPU(uint8_t *buffer, unsigned int size){
+    printf("ADPU: ");
     for(int i = 0; i < size; i++) printf("%02X ", buffer[i]);
     printf("\n");
 }
 
-int Read_h_regs(char *server_add, int port, int st_r, int n_r, char *val){
+void print_val(uint16_t *buffer, unsigned int size){
+    printf("val: ");
+    for(int i = 0; i < size; i++){
+         printf("%02X %02X ", (buffer[i] >> 8), (buffer[i] & 0xFF));}
+    printf("\n");
+}
+
+int Read_h_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val){
     // Check Parameters
     if((st_r > max_number_of_registers) || (st_r < 0)){
         printf("[-] Bad parameters (st_r)\n");
@@ -52,7 +58,7 @@ int Read_h_regs(char *server_add, int port, int st_r, int n_r, char *val){
     }
 
     // Assembles APDU (MODBUS PDU)
-    char ADPU[ADPU_max_size];
+    uint8_t ADPU[ADPU_max_size];
     uint8_t Func_code, HI_byte_st, LO_byte_st, HI_byte_quantity, LO_byte_quantity; // 5 bytes overhead
 
     Func_code = Read_holding_registers_function_code;
@@ -67,10 +73,10 @@ int Read_h_regs(char *server_add, int port, int st_r, int n_r, char *val){
     ADPU[3] = HI_byte_quantity;
     ADPU[4] = LO_byte_quantity;
 
-    int ADPU_size = (5);
-    char ADPU_R[ADPU_max_size];
+    unsigned int ADPU_size = 5;
+    uint8_t ADPU_R[ADPU_max_size];
 
-    print_buffer(ADPU, ADPU_size);
+    //print_ADPU(ADPU, ADPU_size); //Debug
 
     // Send_Modbus_request()
     int res = Send_Modbus_request(server_add, port, ADPU, ADPU_size, ADPU_R);
@@ -81,27 +87,27 @@ int Read_h_regs(char *server_add, int port, int st_r, int n_r, char *val){
         return res;
     }
 
-    int STATE = 0, Exception_code, ADPU_R_byte_count, read_registers = 0;
+    unsigned int STATE = STATE_START, Exception_code, ADPU_R_byte_count, read_registers = 0;
 
     while(STATE != STATE_ERROR){
         switch (STATE)
         {
         case (STATE_START):
             if(ADPU_R[0] == 0x03) STATE = STATE_RESPONSE;
-            if(ADPU_R[0] == 0x83) STATE = STATE_EXCEPTION;
+            else if(ADPU_R[0] == 0x83) STATE = STATE_EXCEPTION;
             else STATE = STATE_ERROR;
             break;
         case (STATE_RESPONSE):
             ADPU_R_byte_count = ADPU_R[1];
-            for(int i = 0; i < ADPU_R_byte_count; i++){
-                val[i] = ADPU_R[i+2];
+            for(int i = 0; i < ADPU_R[1]/2; i++){
+                val[i] = (uint16_t) (ADPU_R[2*i+2] << 8) + (uint16_t) (ADPU_R[3+2*i]);
                 read_registers++;
             }
             return read_registers;
             break;
         case (STATE_EXCEPTION):
             Exception_code = ADPU_R[1];
-            return Exception_code;
+            return -10* Exception_code;
             break;
         default:
             STATE = STATE_ERROR;
@@ -113,14 +119,14 @@ int Read_h_regs(char *server_add, int port, int st_r, int n_r, char *val){
     return read_registers;
 }
 
-int Write_multiple_request(char *server_add, int port, int st_r, int n_r, char *val){
+int Write_multiple_request(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val){
     // Check Parameters
     // port
     if((st_r > max_number_of_registers) || (st_r < 0)){
         printf("[-] Bad parameters (st_r)\n");
         return -1;
     }
-    if((n_r > max_number_of_registers) || (n_r < 0)){
+    if((n_r > 123) || (n_r < 0)){
         printf("[-] Bad parameters (n_r)\n");
         return -1;
     }
@@ -134,7 +140,7 @@ int Write_multiple_request(char *server_add, int port, int st_r, int n_r, char *
     }
     
     // Assembles ADPU (Modbus PDU)
-    char ADPU[ADPU_max_size];
+    uint8_t ADPU[ADPU_max_size];
     uint8_t Func_code, HI_byte_st, LO_byte_st, HI_byte_quantity, LO_byte_quantity, Byte_count, HI_reg, LO_Reg;
 
     Func_code = Write_multiple_request_function_code;
@@ -152,20 +158,18 @@ int Write_multiple_request(char *server_add, int port, int st_r, int n_r, char *
     ADPU[4] = LO_byte_quantity;
     ADPU[5] = Byte_count;
 
-    for(int i = 0; i < 2*n_r; i++){
-        //HI_reg == val[i] >> 8;
-        //LO_Reg == val[i] && 0xFF;
-        //ADPU[2*i + 6] = 0x00;
-        //ADPU[2*i+1 + 6] = val[i];
-        ADPU[i + 6] = val[i];
+    for(int i = 0; i < n_r; i++){ //2 * n_r
+        ADPU[2*i + 6] = (uint8_t) (val[i] >> 8);
+        ADPU[2*i+1 + 6] = (uint8_t) (val[i] & 0xFF);
     }
         
-    int ADPU_size = (6 + 2*n_r);
-    char ADPU_R[ADPU_max_size];
+    unsigned int ADPU_size = (6 + 2 * n_r);
+    uint8_t ADPU_R[ADPU_max_size];
 
-    
-    print_buffer(val, (2*n_r));
-    print_buffer(ADPU, (6 + 2*n_r));
+    //Debug
+    //print_val(val, (2*n_r));
+    //print_val(val, (n_r));
+    //print_ADPU(ADPU, (6 + 2*n_r));
 
     // Send_Modbus_request()
     int res = Send_Modbus_request(server_add, port, ADPU, ADPU_size, ADPU_R);
@@ -177,13 +181,13 @@ int Write_multiple_request(char *server_add, int port, int st_r, int n_r, char *
     }
 
     int STATE = STATE_START, Exception_code, ADPU_R_byte_count, write_registers = 0, HI_starting_address, LO_starting_address, HI_quantity_of_registers, LO_quantity_of_registers;
-    return 1;
+    
     while(STATE != STATE_ERROR){
         switch (STATE)
         {
         case (STATE_START):
             if(ADPU_R[0] == 0x10) STATE = STATE_RESPONSE;
-            if(ADPU_R[0] == 0x90) STATE = STATE_EXCEPTION; 
+            else if(ADPU_R[0] == 0x90) STATE = STATE_EXCEPTION; 
             else STATE = STATE_ERROR;
             break;
         case (STATE_RESPONSE):
@@ -192,11 +196,13 @@ int Write_multiple_request(char *server_add, int port, int st_r, int n_r, char *
             HI_quantity_of_registers = ADPU_R[3];
             LO_quantity_of_registers = ADPU_R[4];
 
-            write_registers = (HI_quantity_of_registers << 8) || LO_quantity_of_registers;
+            //write_registers = (HI_quantity_of_registers << 8) | LO_quantity_of_registers; //...
+            write_registers = (int) (ADPU_R[3] << 8) + (int) (ADPU_R[4]);
             return write_registers;
             break;
         case (STATE_EXCEPTION):
             Exception_code = ADPU_R[1];
+            return -10* Exception_code;
             break;
         default:
             STATE = STATE_ERROR;

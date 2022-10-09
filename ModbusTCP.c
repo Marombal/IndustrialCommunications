@@ -4,9 +4,8 @@
 #include <arpa/inet.h>	//inet_addr
 #include <unistd.h>	//write
 
-#include "ModbusTCP.h"
 
-#define Unit_identifier_code 0x00
+#define Unit_identifier_code 0x01
 
 #define PDU_max_size 259 // 252 (APDU) + 7
 #define SERVER_PORT 5502
@@ -36,15 +35,15 @@ void print_PDU(char *buffer, int size){
 
 int ID = 0;
 
-int Send_Modbus_request(char *server_add, int port, char *APDU, int APDUlen, char *APDU_R){
+int Send_Modbus_request(char *server_add, unsigned int port, uint8_t *APDU, unsigned int APDUlen, uint8_t *APDU_R){
     // Generates TI (trans.ID -> sequence number)
     ID = ID + 1;
     int TI = ID; 
 
     // Assembles PDU = APDU(SDU) + MBAP
-    int PDUlen = 0;
-    char PDU[PDU_max_size];
-    u_int8_t HI_Transaction_identifier, LO_Transaction_identifier, HI_Protocol_identifier, LO_Protocol_identifier, HI_Lenght, LO_Lenght, Unit_identifier;
+    unsigned int PDUlen = 0;
+    uint8_t PDU[PDU_max_size];
+    uint8_t HI_Transaction_identifier, LO_Transaction_identifier, HI_Protocol_identifier, LO_Protocol_identifier, HI_Lenght, LO_Lenght, Unit_identifier;
 
     HI_Transaction_identifier = TI >> 8;
     LO_Transaction_identifier = TI & 0xFF;
@@ -66,7 +65,8 @@ int Send_Modbus_request(char *server_add, int port, char *APDU, int APDUlen, cha
 
     PDUlen = 7 + APDUlen;
 
-    print_PDU(PDU, PDUlen);
+    //Debug
+    //print_PDU(PDU, PDUlen);
 
     // Opens TCP client socket and connects to server (fd = socket(); sockaddr_in ... ; connect(fd, s_addr...))
     int socket_desc, out, in;
@@ -79,7 +79,7 @@ int Send_Modbus_request(char *server_add, int port, char *APDU, int APDUlen, cha
         printf("[-] Socket creation failed! \n");
         return -1;
     }
-    printf("[+] Socket Created with sucess \n");
+    //printf("[+] Socket Created with sucess \n"); //Debug
 
     // preprare the sockaddr_in structure
     server.sin_family = AF_INET;
@@ -91,7 +91,7 @@ int Send_Modbus_request(char *server_add, int port, char *APDU, int APDUlen, cha
         printf("[-] Connection to the server failed. \n");
         return -1;
     }
-    printf("[+] Connected to the server at address (%s) / port (%d). \n", server_add, port);
+    //printf("[+] Connected to the server at address (%s) / port (%d). \n", server_add, port); //Debug
 
     // sends Modbus TCP PDU
     //in = write(socket_desc, PDU, PDUlen);
@@ -99,19 +99,19 @@ int Send_Modbus_request(char *server_add, int port, char *APDU, int APDUlen, cha
     if(in < 0){
         printf("[-] Error sending to socket. \n");
     }
-    else 
-        printf("[+] Sent %d bytes to socket. \n", in);
+    // else  printf("[+] Sent %d bytes to socket. \n", in); //debug
+       
     
-    char *PDU_R;
-    int PDU_Rlen = 0;
+    uint8_t PDU_R[300]; // ??? 
+    unsigned int PDU_Rlen = 0;
     // response o timeout
     out = recv(socket_desc, PDU_R, PDU_max_size, 0);
     //read(socket_desc, PDU_R, PDU_Rlen);
     if(out < 0){
         printf("[-] RECV failed. \n");
     }
-    else 
-        printf("[+] Server answered. \n");
+    //else printf("[+] Server answered. \n"); //debug
+        
     // If response, remove MBAP, PDU_R -> APDU_R
 
     // PDU_R analisys
@@ -128,20 +128,15 @@ int Send_Modbus_request(char *server_add, int port, char *APDU, int APDUlen, cha
         //return -1;
     }
 
-    printf("[+] MBAP okay. \n");
-
-    int lenght = (PDU_R[4] << 8) || PDU_R[5];
-    
-    for(int i = 0; i < lenght; i++){
+    //printf("[+] MBAP okay. \n"); //debug
+    unsigned int lenght = (PDU_R[4] << 8) | PDU_R[5];
+    for(int i = 0; i < lenght - 1; i++){
         APDU_R[i] = PDU_R[i+7]; 
         PDU_Rlen++;                             // PDU_Rlen = lenght
-        //printf("%02X ", APDU_R[i]);
     }
 
-    //printf("\n");
     // Closes TCP client Socket with server (close(fd))
     close(socket_desc);
-    
     // Returns: APDU_R and 0 - ok, < 0 - Error (timeout)
     return 0;
 }

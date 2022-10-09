@@ -1,7 +1,9 @@
+#include <stdio.h>
+#include <string.h>	//strlen
+#include <sys/socket.h>
+#include <arpa/inet.h>	//inet_addr
+#include <unistd.h>	//write
+#include <stdlib.h>
 
-/**
- * @brief 
- * 
- * @return int 
- */
-int Send_Modbus_request(char *server_add, int port, char *APDU, int APDUlen, char *APDU_R);
+
+int Send_Modbus_request(char *server_add, unsigned int port, uint8_t *APDU, unsigned int APDUlen, uint8_t *APDU_R);
