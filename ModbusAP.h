@@ -30,14 +30,31 @@
  * Args:
  *  char *server_add - server's address ip in formtar of a string (e.g. "127.0.0.1");
  *  unsigned int port - TCP port for the connection (e.g. 502);
- *  - st_r = start address of the holding registers - 1, because of uint16_t that can only
- *      store values from 0 to 65535;
- *  - n_r - number of holding registers to be read by the server;
- *  - val - vector that will be returned with the pretended values. For reference, the
- *      length of the vector is n_r.
+ *  uint32_t st_r - starting address of the holding registers considering the registers from 1 to 65536/register number not offset.
+ *  uint32_t n_r - number of holding registers to be read from the server;
+ *  uint16_t val - vector were the returning values will be stored.
+ * 
+ *  Example of usage. Read two registers starting from the 5th register (4offset) from the server with ip 127.0.0.1 listening on port 502 and saving them on vector val 
+ *  
+ *  Read_h_regs("127.0.0.1", 502, 5, 2, val); // being val a uint16_t vector
+ *     
  */
 int Read_h_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val);
 
+/* Write_multiple_regs()
+ * Writes in servers' registers
+ * Args:
+ *  char *server_add - server's address ip in formtar of a string (e.g. "127.0.0.1");
+ *  unsigned int port - TCP port for the connection (e.g. 502);
+ *  uint32_t st_r - starting address considering registers from 1 to 65536/register number not offset.
+ *  uint32_t n_r - number of registers to be write on the server;
+ *  uint16_t val - vector were the values to be written to the server should be.
+ * 
+ *  Example of usage. Write three registers (present on the vector val) starting from the 2th register (1offset) to the server with ip 127.0.0.1 listening on port 502 
+ *  
+ *  Write_multiple_regs("127.0.0.1", 502, 2, 3, val); // being val a uint16_t vector with the values that you wanna write stored
+ *     
+ */
 int Write_multiple_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val);
 
 #endif

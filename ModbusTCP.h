@@ -22,8 +22,15 @@
 #define STATE_OK 2
 
 
-
-
+/* Send_Modbus_request()
+ * This function is responsible from preparion the MBAP header, create a socket and send (from that socket) the request to the server
+ * Args:
+ *  char *server_add - server's address ip in formtar of a string (e.g. "127.0.0.1");
+ *  unsigned int port - TCP port for the connection (e.g. 502);
+ *  uint8_t *APDU - The array with the request to be send
+ *  unsigned int APDUlen - length of the previus array
+ *  uint8_t *APDU_R - stream where the server's response will be stored(value returned by the argument).
+ */
 int Send_Modbus_request(char *server_add, unsigned int port, uint8_t *APDU, unsigned int APDUlen, uint8_t *APDU_R);
 
 #endif
