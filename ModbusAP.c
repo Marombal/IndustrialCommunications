@@ -15,11 +15,11 @@ void print_val(uint16_t *buffer, unsigned int size){
 
 int Read_h_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val){
     // Check Parameters
-    if((st_r > max_number_of_registers) || (st_r < 0)){
+    if((st_r > max_number_of_registers) || (st_r < 1)){
         printf("[-] Bad parameters (st_r)\n");
         return -1;
     }
-    if((n_r > max_number_of_registers) || (n_r < 0)){
+    if((n_r > max_quantity_of_registers_read) || (n_r < 0)){
         printf("[-] Bad parameters (n_r)\n");
         return -1;
     }
@@ -101,11 +101,11 @@ int Read_h_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r
 int Write_multiple_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val){
     // Check Parameters
     // port
-    if((st_r > max_number_of_registers) || (st_r < 0)){
+    if((st_r > max_number_of_registers) || (st_r < min_number_of_registers)){
         printf("[-] Bad parameters (st_r)\n");
         return -1;
     }
-    if((n_r > 123) || (n_r < 0)){
+    if((n_r > max_quantity_of_registers_write) || (n_r < 1)){
         printf("[-] Bad parameters (n_r)\n");
         return -1;
     }

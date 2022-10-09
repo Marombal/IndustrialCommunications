@@ -11,7 +11,9 @@
 #include <stdlib.h>
 
 #define max_number_of_registers 65536
-#define max_quantity_of_registers 123
+#define min_number_of_registers 1
+#define max_quantity_of_registers_write 123
+#define max_quantity_of_registers_read 125
 #define ADPU_max_size 256 // 123*2 + 6 + extra
 #define Write_multiple_request_function_code 0x10
 #define Write_multiple_request_rejection_code 0x90
