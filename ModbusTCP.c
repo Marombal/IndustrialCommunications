@@ -1,22 +1,4 @@
-#include <stdio.h>
-#include <string.h>	//strlen
-#include <sys/socket.h>
-#include <arpa/inet.h>	//inet_addr
-#include <unistd.h>	//write
-
-
-#define Unit_identifier_code 0x01
-
-#define PDU_max_size 259 // 252 (APDU) + 7
-#define SERVER_PORT 5502
-#define SERVER_ADDR "127.0.0.1"
-
-#define STATE_START 0
-#define STATE_ERROR -1
-#define STATE_RESPONSE 1
-#define STATE_EXCEPTION 4
-#define STATE_OK 2
-
+#include "ModbusTCP.h"
 
 void print_PDU(char *buffer, int size){
     printf("PDU: ");
@@ -48,8 +30,8 @@ int Send_Modbus_request(char *server_add, unsigned int port, uint8_t *APDU, unsi
     HI_Transaction_identifier = TI >> 8;
     LO_Transaction_identifier = TI & 0xFF;
     HI_Protocol_identifier = 0x00; LO_Protocol_identifier = 0x00;
-    HI_Lenght = (APDUlen + 1) >> 8;
-    LO_Lenght = (APDUlen + 1) & 0xFF;
+    HI_Lenght = (APDUlen + 1) >> 8;                                     // +1 from Unit Identifier
+    LO_Lenght = (APDUlen + 1) & 0xFF;                                   // +1 from Unit Identifier
     Unit_identifier = Unit_identifier_code;
 
     PDU[0] = HI_Transaction_identifier;
@@ -102,7 +84,7 @@ int Send_Modbus_request(char *server_add, unsigned int port, uint8_t *APDU, unsi
     // else  printf("[+] Sent %d bytes to socket. \n", in); //debug
        
     
-    uint8_t PDU_R[300]; // ??? 
+    uint8_t PDU_R[PDU_max_size];
     unsigned int PDU_Rlen = 0;
     // response o timeout
     out = recv(socket_desc, PDU_R, PDU_max_size, 0);
@@ -117,15 +99,18 @@ int Send_Modbus_request(char *server_add, unsigned int port, uint8_t *APDU, unsi
     // PDU_R analisys
     if(PDU_R[0] != HI_Transaction_identifier || PDU_R[1] != LO_Transaction_identifier){
         printf("[-] Incorrect Transition Identifier. PDU_R rejected. \n");
-        //return -1;
+        close(socket_desc);
+        return -1;
     }
     if(PDU_R[2] != HI_Protocol_identifier || PDU_R[3] != LO_Protocol_identifier){
         printf("[-] Incorrect Protocol Identifier. PDU_R rejected. \n");
-        //return -1;
+        close(socket_desc);
+        return -1;
     }
     if(PDU_R[6] != Unit_identifier){
         printf("[-] Incorrect Unit Identifier. PDU_R rejected. \n");
-        //return -1;
+        close(socket_desc);
+        return -1;
     }
 
     //printf("[+] MBAP okay. \n"); //debug

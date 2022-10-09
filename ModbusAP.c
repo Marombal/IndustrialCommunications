@@ -1,25 +1,4 @@
-#include <stdio.h>
-#include <string.h>	//strlen
-#include <sys/socket.h>
-#include <arpa/inet.h>	//inet_addr
-#include <unistd.h>	//write
-
-#include <stdlib.h>
-
-#include "ModbusTCP.h"
-
-#define max_number_of_registers 65536
-#define max_quantity_of_registers 123
-#define ADPU_max_size 256 // 123*2 + 6 + extra
-#define Write_multiple_request_function_code 0x10
-#define Read_holding_registers_function_code 0x03
-
-#define STATE_START 0
-#define STATE_ERROR -1
-#define STATE_RESPONSE 1
-#define STATE_EXCEPTION 4
-#define STATE_OK 2
-
+#include "ModbusAP.h"
 
 void print_ADPU(uint8_t *buffer, unsigned int size){
     printf("ADPU: ");
@@ -93,8 +72,8 @@ int Read_h_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r
         switch (STATE)
         {
         case (STATE_START):
-            if(ADPU_R[0] == 0x03) STATE = STATE_RESPONSE;
-            else if(ADPU_R[0] == 0x83) STATE = STATE_EXCEPTION;
+            if(ADPU_R[0] == Read_holding_registers_function_code) STATE = STATE_RESPONSE;
+            else if(ADPU_R[0] == Read_holding_registers_rejection_code) STATE = STATE_EXCEPTION;
             else STATE = STATE_ERROR;
             break;
         case (STATE_RESPONSE):
@@ -119,7 +98,7 @@ int Read_h_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r
     return read_registers;
 }
 
-int Write_multiple_request(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val){
+int Write_multiple_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r, uint16_t *val){
     // Check Parameters
     // port
     if((st_r > max_number_of_registers) || (st_r < 0)){
@@ -186,8 +165,8 @@ int Write_multiple_request(char *server_add, unsigned int port, uint32_t st_r, u
         switch (STATE)
         {
         case (STATE_START):
-            if(ADPU_R[0] == 0x10) STATE = STATE_RESPONSE;
-            else if(ADPU_R[0] == 0x90) STATE = STATE_EXCEPTION; 
+            if(ADPU_R[0] == Write_multiple_request_function_code) STATE = STATE_RESPONSE;
+            else if(ADPU_R[0] == Write_multiple_request_rejection_code) STATE = STATE_EXCEPTION; 
             else STATE = STATE_ERROR;
             break;
         case (STATE_RESPONSE):
@@ -195,8 +174,6 @@ int Write_multiple_request(char *server_add, unsigned int port, uint32_t st_r, u
             LO_starting_address = ADPU_R[2];
             HI_quantity_of_registers = ADPU_R[3];
             LO_quantity_of_registers = ADPU_R[4];
-
-            //write_registers = (HI_quantity_of_registers << 8) | LO_quantity_of_registers; //...
             write_registers = (int) (ADPU_R[3] << 8) + (int) (ADPU_R[4]);
             return write_registers;
             break;

@@ -21,8 +21,8 @@ int main(void){
     nread = Read_h_regs("127.0.0.1", 502, 1, 1, &read2);
     if(nread < 0){
         if(nread == -10) printf("Function not suported \n");
-        else if(nread == -20) printf("Quantity of registers not suported \n");
-        else if(nread == -30) printf("Adress not suported \n");
+        else if(nread == -30) printf("Quantity of registers not suported \n");
+        else if(nread == -20) printf("Adress not suported \n");
         else if(nread == -40) printf("Request process failed \n");
         else printf("RHR error \n");
     }
@@ -32,7 +32,7 @@ int main(void){
 
     int nwrite;
     uint16_t write[3] = {11, 1, 3};
-    nwrite = Write_multiple_request("127.0.0.1", 502, 5, 3, write);
+    nwrite = Write_multiple_regs("127.0.0.1", 502, 5, 3, write);
     if(nwrite < 0){
         if(nwrite == -10) printf("Function not suported \n");
         else if(nwrite == -30) printf("Quantity of registers not suported \n");
@@ -44,7 +44,7 @@ int main(void){
         printf("Write -> (%d)\n", nwrite);
 
     uint16_t w1 = (read[0] + read[1]);
-    nwrite = Write_multiple_request("127.0.0.1", 502, 9, 1, &w1);
+    nwrite = Write_multiple_regs("127.0.0.1", 502, 9, 1, &w1);
     if(nwrite < 0){
         if(nwrite == -10) printf("Function not suported \n");
         else if(nwrite == -30) printf("Quantity of registers not suported \n");
