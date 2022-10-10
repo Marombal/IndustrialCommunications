@@ -90,6 +90,7 @@ int Read_h_regs(char *server_add, unsigned int port, uint32_t st_r, uint16_t n_r
             break;
         default:
             STATE = STATE_ERROR;
+            return -1;
             break;
         }
     }
@@ -183,6 +184,7 @@ int Write_multiple_regs(char *server_add, unsigned int port, uint32_t st_r, uint
             break;
         default:
             STATE = STATE_ERROR;
+            return -1;
             break;
         }
     }
